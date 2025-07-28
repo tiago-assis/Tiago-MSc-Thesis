@@ -27,6 +27,7 @@ def set_configs() -> argparse.Namespace:
     """
     parser = argparse.ArgumentParser(description="Train a model for dense displacement field prediction from MRI scans and sparse displacements.")
     parser.add_argument('--data', type=str, default=None, help='Path to the data directory.')
+    parser.add_argument('--test', action='store_true', help='Whether to run the model on the test set.')
     parser.add_argument('--checkpoint', action='store_true', help="Whether additional checkpoints should be saved during training or not. Checkpoints are automatically saved every evaluation step (see '--evaluate_every').")
     parser.add_argument('--load_model', type=str, default=None, help="Path to load a saved model checkpoint.")
     parser.add_argument('--save_dir', type=str, default='checkpoints', help="Path to save training checkpoints.")
@@ -55,9 +56,9 @@ def set_configs() -> argparse.Namespace:
     parser.add_argument('--reg_w', type=float, default=1.0, help='Weight for the regularization term.')
     parser.add_argument('--extra_eval', action='store_true', help='Includes additional metric tracking, including TRE, Dice, and HD95.')
     parser.add_argument('--augment', action='store_true', help='Whether to enable or disable imagine intensity augmentations.')
-    parser.add_argument('--evaluate_every', type=int, default=4, help='Frequency of validation during training. Sets the number of epochs after which the model is evaluated on the validation or testing sets.')
-    parser.add_argument('--train_save_every', type=int, default=20, help='Frequency of saving metrics during training. Sets the number of batches after which the metrics are saved. A value of -1 can be set so no data is saved during training.')
-    parser.add_argument('--val_save_every', type=int, default=4, help='Frequency of saving metrics during validation and testing. Sets the number of batches after which the metrics are saved.')
+    parser.add_argument('--evaluate_every', type=int, default=1, help='Frequency of validation during training. Sets the number of epochs after which the model is evaluated on the validation or testing sets.')
+    parser.add_argument('--train_save_every', type=int, default=121, help='Frequency of saving metrics during training. Sets the number of batches after which the metrics are saved. A value of -1 can be set so no data is saved during training.')
+    #parser.add_argument('--val_save_every', type=int, default=12, help='Frequency of saving metrics during validation and testing. Sets the number of batches after which the metrics are saved.')
     parser.add_argument('--local_plot_save', action='store_true', help='Whether to save training plots locally.')
     parser.add_argument('--save_warps', action='store_true', help='Whether to save warped versions of the images or not.')
     parser.add_argument('--metrics_dir', type=str, default='metric_saves', help='Path to save metrics and plots.')
@@ -71,6 +72,9 @@ def set_configs() -> argparse.Namespace:
 
     args = parser.parse_args()
 
+    if args.batch_size > 1:
+        raise NotImplementedError("Batch sizes greater than 1 are not yet supported.")
+    
     if args.configs is not None:
         with open(args.configs, 'r') as f:
             config_args = json.load(f)
@@ -89,6 +93,7 @@ def set_configs() -> argparse.Namespace:
         args.max_kpts = args.num_kpts
 
     assert args.data is not None, "Data path must be provided."
+    assert not (args.test and args.load_model is None), "If testing, a model checkpoint must be provided."
     assert os.path.exists(args.data) and os.path.isdir(args.data), f"Data path provided is not a valid directory: {args.data}"
     assert args.epochs > 0, "Number of epochs must be a positive integer."
     assert 2 <= len(args.split) <= 3 and 0 < sum(args.split) < 1.0, f"Data split ratios need to be in the format [(train_split, )val_split, test_split] and its sum must be in the interval (0, 1)."
@@ -96,15 +101,12 @@ def set_configs() -> argparse.Namespace:
     assert args.lncc_window > 0, "LNCC window size must be a positive integer."
     assert args.evaluate_every > 0, "Evaluation frequency must be a positive integer."
     #assert args.train_save_every > 0, "Training metrics save frequency must be a positive integer."
-    assert args.val_save_every > 0, "Validation metrics save frequency must be a positive integer."
+    #assert args.val_save_every > 0, "Validation metrics save frequency must be a positive integer."
     assert args.size[0] > 0 and args.size[1] > 0 and args.size[2] > 0, "Input size dimensions must be positive integers."
     assert args.interp in ['tps', 'linear'], f"Interpolation method must be either 'tps' or 'linear'; got '{args.interp}'"
     assert args.min_kpts >= 5, "Minimum number of sampled keypoints must be >= 5."
     assert args.max_kpts >= args.min_kpts, "The number of maximum sampled keypoints must be an integer >= the number of minimum sampled keypoints."
-    assert args.seed >= 0 or (args.seed is None), f"Deterministic seed needs to be a non-negative integer or None; got {args.seed}"
-
-    if args.batch_size > 1:
-        raise NotImplementedError("Batch sizes greater than 1 are not yet supported.")
+    assert (args.seed is None) or args.seed >= 0, f"Deterministic seed needs to be a non-negative integer or None; got {args.seed}"
 
     return args
 
@@ -141,6 +143,9 @@ if __name__ == "__main__":
         shuffle=True,
         dataloader_generator=torch.Generator().manual_seed(args.seed) if args.seed is not None else None
     )
+
+    if args.train_save_every > len(train_dataloader):
+        args.train_save_everu = len(train_dataloader)
 
     metrics = [
         'Total Loss',
@@ -244,7 +249,8 @@ if __name__ == "__main__":
     model = model.to(args.device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     #scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, args.epochs, eta_min=args.lr/100)
-    #scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=3, threshold=0.001, threshold_mode='abs', cooldown=0, min_lr=1e-6)[source]
+    #scheduler = optim.lr_scheduler.PolynomialLR(optimizer, total_iters=args.epochs, power=0.4)
+    #scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=3, threshold=0.001, threshold_mode='abs', cooldown=0, min_lr=1e-6)
 
     if args.lncc:
         lncc_loss = LNCC(args.lncc_window).to(args.device)
@@ -264,33 +270,61 @@ if __name__ == "__main__":
         checkpoint = load_checkpoint(args.load_model, model, optimizer, verbose=True)
         init_epoch = checkpoint['epoch']
         best_loss = checkpoint['loss']
-    
-    print(f"\nA {args.model} model was selected to train with the {'GPU' if args.device == 'cuda' else 'CPU'}.")
-    print(f"Metrics and setup arguments are being saved to: {log_dir}")
-    print(f"Model checkpoints are being saved to: {args.save_dir}")
-    print(f"\nTraining model...\n")
-    for epoch in tqdm(range(args.epochs)):
-        run_trainer(
-            train_dataloader, 
-            model, 
-            epoch, 
-            writer, 
-            train_metric_tracker, 
-            optimizer=optimizer, 
-            mode='train',
-            mse_w=args.mse_w, 
-            lncc_loss=lncc_loss, 
-            lncc_w=args.lncc_w, 
-            reg_penalty=reg_penalty, 
-            reg_w=args.reg_w,
-            save_metrics_every=args.train_save_every, 
-            local_plot_save=args.local_plot_save, 
-            save_warps=args.save_warps,
-            device=args.device
-        )
 
-        if epoch % args.evaluate_every == args.evaluate_every - 1:
-            print(f"\n\nValidating model...")
+    if not args.test:
+        print(f"\nA {args.model} model was selected to train with the {'GPU' if args.device == 'cuda' else 'CPU'}.")
+        print(f"Metrics and setup arguments are being saved to: {log_dir}")
+        print(f"Model checkpoints are being saved to: {args.save_dir}")
+        print(f"\nTraining model...\n")
+        for epoch in tqdm(range(init_epoch, args.epochs)):
+            run_trainer(
+                train_dataloader, 
+                model, 
+                epoch, 
+                writer, 
+                train_metric_tracker, 
+                optimizer=optimizer, 
+                mode='train',
+                mse_w=args.mse_w, 
+                lncc_loss=lncc_loss, 
+                lncc_w=args.lncc_w, 
+                reg_penalty=reg_penalty, 
+                reg_w=args.reg_w,
+                save_metrics_every=args.train_save_every, 
+                local_plot_save=args.local_plot_save, 
+                save_warps=args.save_warps,
+                device=args.device
+            )
+
+            if epoch % args.evaluate_every == args.evaluate_every - 1:
+                print(f"\n\nValidating model...")
+                loss = run_trainer(
+                    val_dataloader, 
+                    model, 
+                    epoch, 
+                    writer, 
+                    val_metric_tracker, 
+                    mode='val',
+                    mse_w=args.mse_w, 
+                    lncc_loss=lncc_loss, 
+                    lncc_w=args.lncc_w, 
+                    reg_penalty=reg_penalty, 
+                    reg_w=args.reg_w,
+                    extra_eval=args.extra_eval,
+                    save_metrics_every=len(val_dataloader), 
+                    local_plot_save=args.local_plot_save, 
+                    save_warps=args.save_warps, 
+                    device=args.device
+                )
+
+                is_best = loss < best_loss
+                best_loss = loss if is_best else best_loss
+                if is_best or args.checkpoint:
+                    save_checkpoint(model, optimizer, epoch, loss, is_best=is_best, filename=args.run_prefix, save_dir=args.save_dir, additional_info=None)
+
+            #scheduler.step()
+
+        if args.epochs % args.evaluate_every != 0:
             loss = run_trainer(
                 val_dataloader, 
                 model, 
@@ -303,47 +337,22 @@ if __name__ == "__main__":
                 lncc_w=args.lncc_w, 
                 reg_penalty=reg_penalty, 
                 reg_w=args.reg_w,
-                save_metrics_every=args.val_save_every, 
+                extra_eval=args.extra_eval,
+                save_metrics_every=len(val_dataloader), 
                 local_plot_save=args.local_plot_save, 
                 save_warps=args.save_warps, 
                 device=args.device
             )
-
+            
             is_best = loss < best_loss
             best_loss = loss if is_best else best_loss
             if is_best or args.checkpoint:
                 save_checkpoint(model, optimizer, epoch, loss, is_best=is_best, filename=args.run_prefix, save_dir=args.save_dir, additional_info=None)
 
-        #scheduler.step()
-
-    if args.epochs % args.evaluate_every != 0:
-        loss = run_trainer(
-            val_dataloader, 
-            model, 
-            epoch, 
-            writer, 
-            val_metric_tracker, 
-            mode='val',
-            mse_w=args.mse_w, 
-            lncc_loss=lncc_loss, 
-            lncc_w=args.lncc_w, 
-            reg_penalty=reg_penalty, 
-            reg_w=args.reg_w,
-            save_metrics_every=args.val_save_every, 
-            local_plot_save=args.local_plot_save, 
-            save_warps=args.save_warps, 
-            device=args.device
-        )
-        
-        is_best = loss < best_loss
-        best_loss = loss if is_best else best_loss
-        if is_best or args.checkpoint:
-            save_checkpoint(model, optimizer, epoch, loss, is_best=is_best, filename=args.run_prefix, save_dir=args.save_dir, additional_info=None)
-
-    best_model = glob.glob(os.path.join(args.save_dir, "best_checkpoints", f"{args.run_prefix}*"))[0]
-    checkpoint = load_checkpoint(best_model, model, optimizer, verbose=True)
-    init_epoch = checkpoint['epoch']
-    print("\nRunning the best model on the test set...\n")
+        best_model = glob.glob(os.path.join(args.save_dir, "best_checkpoints", f"{args.run_prefix}*"))[0]
+        checkpoint = load_checkpoint(best_model, model, optimizer, verbose=True)
+        init_epoch = checkpoint['epoch']
+        print("\nRunning the best model on the test set...\n")
     
     run_trainer(
         test_dataloader, 
@@ -357,7 +366,7 @@ if __name__ == "__main__":
         lncc_w=args.lncc_w, 
         reg_penalty=reg_penalty, 
         reg_w=args.reg_w,
-        save_metrics_every=args.val_save_every, 
+        save_metrics_every=1, 
         local_plot_save=args.local_plot_save, 
         save_warps=args.save_warps,
         extra_eval=args.extra_eval,
