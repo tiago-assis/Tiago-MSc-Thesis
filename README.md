@@ -168,7 +168,7 @@ An overview of the contents of each folder is given below:
   - [4_extract_sift_features.py](4_keypoints_extraction/4_extract_sift_features.py): extracts SIFT-Ranked features from NIfTI medical images in a given directory.
 
 ## Contact
-Contact at: tiago.assis@alunos.fc.ul.pt
+Contact at: tiago.assis@alunos.ciencias.ulisboa.pt
 
 LASIGE - Computer Science and Engineering Research Centre
 
