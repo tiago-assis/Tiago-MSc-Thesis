@@ -141,7 +141,7 @@ class SurgicalVectorGenerator:
         theta = np.arctan2(base_vector[1], base_vector[0])
         phi = np.arcsin(base_vector[2])
 
-        # Cnvert degrees to radians
+        # Convert degrees to radians
         angle_var_rad = np.radians(angle_variability)
 
         # The constraint for all the angles to be separated by a certain minimum angle
