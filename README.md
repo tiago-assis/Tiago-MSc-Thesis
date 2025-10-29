@@ -1,7 +1,10 @@
 # Deep Biomechanically-Guided Interpolation for Keypoint-Based Brain Shift Registration
 
-This repository contains the implementation of the deep learning framework section of our paper: ![Deep Biomechanically-Guided Interpolation for Keypoint-Based Brain Shift Registration]().
+This repository provides the implementation for interpolating and predicting biomechanically-corrected displacement fields, as described in Section 2.4 of our paper: [Deep Biomechanically-Guided Interpolation for Keypoint-Based Brain Shift Registration](https://www.arxiv.org/abs/2508.13762).
 
+The code for the synthetic ground truth generation pipeline will be made available in a future release.
+
+\
 Accurate compensation of brain shift is critical for maintaining the reliability of neuronavigation during neurosurgery. This work proposes a novel deep learning framework that estimates dense, physically plausible brain deformations from sparse matched keypoints. We first generate a large dataset of synthetic brain deformations using biomechanical simulations. Then, a residual 3D U-Net is trained to refine standard interpolation estimates into biomechanically guided deformations. Experiments on a large set of simulated displacement fields demonstrate that our method significantly outperforms classical interpolators, reducing the mean square error while introducing negligible computational overhead at inference time.
 
 ## Framework Overview
@@ -24,14 +27,17 @@ The process to train the model was performed as follows:
         - The model is trained with a voxel-wise error loss and a Jacobian-based regularization loss to encourage smooth deformations.
 
 ![Overview of the proposed framework](assets/framework_pipeline.png)
-**Fig 1.** Overview of the proposed framework.
+**Fig 1.** Overview of our training framework. The synthetic ground truth generation pipeline is depicted with green arrows. The pipeline depicted with blue arrows shows the interpolation of sparse matched keypoint displacements and correction to a biomechanically plausible dense displacement field with a 3D residual U-Net.
 
 ## Citation
 
 If this work is useful to you, please consider citing the original paper!
 ```
-@inproceedings{
-
+@article{assis2025deep,
+  title={Deep Biomechanically-Guided Interpolation for Keypoint-Based Brain Shift Registration},
+  author={Assis, Tiago and Machado, Ines P and Zwick, Benjamin and Garcia, Nuno C and Dorent, Reuben},
+  journal={arXiv preprint arXiv:2508.13762},
+  year={2025}
 }
 ```
 
@@ -51,7 +57,6 @@ cd Deep-Biomechanical-Interpolator
 | SciPy | NiBabel | pynrrd |
 | natsort | tqdm | Matplotlib |
 
-Python 3.13 was tested. \
 PyTorch 2.7 with CUDA 12.4+ was tested on NVIDIA RTX 4080 16GB and NVIDIA A100 40/80GB.
 
  \
@@ -61,7 +66,7 @@ pip install -r requirements.txt
 ```
 
 ## Training
-To reproduce the training done in this work, you will be required to download our custom dataset ![NeuriPhy]() (TBD) that comprises: preoperative MRI data, brain and tumor segmentations, extracted keypoints, and biomechanically simulated deformation fields.
+To reproduce the training done in this work, you will be required to download our custom dataset [NeuriPhy](https://zenodo.org/records/15381866) (TBD) that comprises: preoperative MRI data, brain and tumor segmentations, extracted keypoints, and biomechanically simulated deformation fields.
 
 \
 You can then set up the training configuration file and run the following script:
@@ -75,9 +80,9 @@ The training script is highly modular, allowing the configuration of several asp
 To run a pre-trained model, please download the weights in ![checkpoints](checkpoints/).
 
 \
-Two approaches can then be taken:
+Three approaches can then be taken:
 
-**1.** You have access to an initial displacement field and want to run the model for **displacement field correction** only.
+**1.** You have access to an initial displacement field and want to run the model for **displacement field correction** only. This displacement must be in H5 or NPZ format.
 
 Example script:
 ```
@@ -85,7 +90,7 @@ python inference.py \
   -p /path/to/preoperative/scan.nii.gz \
   -i /path/to/initial/displacement/field.h5 \
   -d cuda \
-  -o /path/to/output/corrected/displacement/field.h5
+  -o /path/to/output/directory
 ```
 
 \
@@ -102,23 +107,33 @@ python inference.py \
   -k /path/to/keypoints/and/displacements.csv \
   -m linear \
   -d cuda \
-  -o /path/to/output/corrected/displacement/field.h5
+  -o /path/to/output/directory/
 ```
+
+\
+**3.** You can directly **integrate the model into your code** as an interpolation step by importing the relevant classes (see [inference.py](https://github.com/tiago-assis/Deep-Biomechanical-Interpolator/blob/98ddf63f312ff566c580280626d2f248cba2faa9/inference.py#L106)) and feeding the model a concatenated (4,D,H,W) tensor, including the normalized preoperative ceT1 MRI (1,D,H,W) and initial displacement vector field (3,D,H,W).
+
+<br>
 
 | Argument | Type | Default | Description |
 |----------|------|---------|-------------|
-| `-p`, `--preop_scan` | `str` | **Required** | Path to the preoperative scan (`.nii` or `.nii.gz`). |
-| `-i`, `--init_disp` | `str` | `None` | Path to the initial displacement field (`.h5`). If not provided, it will be generated by interpolating the provided keypoints. |
-| `-k`, `--kpt_disps` | `str` | `None` | Path to the keypoint displacements file (`.csv` or `.txt`). Required if no initial displacement field is given. |
-| `-m`, `--interp_mode` | `str` | `'linear'` | Interpolation mode used to generate the initial field (`tps` or `linear`). |
-| `-d`, `--device` | `str` | `'cuda'` | Device to run the model on (`cuda` or `cpu`). |
-| `-o`, `--output` | `str` | `"."` | Directory to save the output displacement field. |
+| `-p`, <br> `--preop_scan` | `str` | **Required** | Path to the preoperative scan (`.nii` or `.nii.gz`). |
+| `-i`, <br> `--init_disp` | `str` | `None` | Path to the initial displacement field (`.h5`). If not provided, it will be generated by interpolating the provided keypoints. |
+| `-k`, <br> `--kpt_disps` | `str` | `None` | Path to the keypoint displacements file (`.csv` or `.txt`). Required if no initial displacement field is given. |
+| `-m`, <br> `--interp_mode` | `str` | `'linear'` | Interpolation mode used to generate the initial field (`tps` or `linear`). |
+| `-d`, <br> `--device` | `str` | `'cuda'` | Device to run the model on (`cuda` or `cpu`). |
+| `-o`, <br> `--output` | `str` | `"."` | Directory to save the output displacement field. |
 
 ## Acknowledgements
 
-- The ![UPENN-GBM](https://doi.org/10.7937/TCIA.709X-DN49) dataset provided the preoperative patient MRI scans and segmentations for our study.
-- The biomechanical framework by Yu *et al.* ![[1]](https://doi.org/10.1002/cnm.3539), ![[2]](https://doi.org/10.1016/j.compbiomed.2022.105271) was used to generate synthetic ground-truth brain deformations.
-- ![SynthSeg](https://github.com/BBillot/SynthSeg) ![[3]](https://doi.org/10.1016/j.media.2023.102789) was employed to segment the brain parenchyma and cerebrospinal fluid from the MRI scans.
-- The ![3D SIFT-Rank](https://github.com/3dsift-rank/3DSIFT-Rank/tree/Appearance%2BGeometry) ![[4]](https://doi.org/10.1016/j.neuroimage.2019.116208) algorithm was utilized to extract sparse anatomical keypoints from the preoperative images.
-- These publicly available implementations of the ![Delaunay triangulation-based linear interpolation](https://github.com/SamuelJoutard/DrivingPointsPredictionMIR/blob/01e3dd8c4188e70a6113209335f2ecaf1ce0a75d/models.py#L802) and ![thin plate spline interpolation](https://github.com/mattiaspaul/VoxelMorphPlusPlus/blob/0f8da77b4d5bb4df80d188188df9725013bb960b/src/utils_voxelmorph_plusplus.py#L271) algorithms were used as a baseline and to compute initial displacement fields.
-- Part of the code used for implementing the network architectures can be publicly found ![here](https://github.com/alanqrwang/keymorph/tree/dcb799622b2b60877dad27e9705ae6408cdb491c/keymorph/unet3d).
+- The [UPENN-GBM](https://doi.org/10.7937/TCIA.709X-DN49) dataset provided the preoperative patient MRI scans and segmentations for our study.
+- The biomechanical framework by Yu *et al.* [[1]](https://doi.org/10.1002/cnm.3539), [[2]](https://doi.org/10.1016/j.compbiomed.2022.105271) was used to generate synthetic ground-truth brain deformations.
+- [SynthSeg](https://github.com/BBillot/SynthSeg) [[3]](https://doi.org/10.1016/j.media.2023.102789) was employed to segment the brain parenchyma and cerebrospinal fluid from the MRI scans.
+- The [3D SIFT-Rank](https://github.com/3dsift-rank/3DSIFT-Rank/tree/Appearance%2BGeometry) [[4]](https://doi.org/10.1016/j.neuroimage.2019.116208) algorithm was utilized to extract sparse anatomical keypoints from the preoperative images.
+- These publicly available implementations of the [Delaunay triangulation-based linear interpolation](https://github.com/SamuelJoutard/DrivingPointsPredictionMIR/blob/01e3dd8c4188e70a6113209335f2ecaf1ce0a75d/models.py#L802) and [thin plate spline interpolation](https://github.com/mattiaspaul/VoxelMorphPlusPlus/blob/0f8da77b4d5bb4df80d188188df9725013bb960b/src/utils_voxelmorph_plusplus.py#L271) algorithms were used as a baseline and to compute initial displacement fields.
+- Part of the code used for implementing the network architectures can be publicly found [here](https://github.com/alanqrwang/keymorph/tree/dcb799622b2b60877dad27e9705ae6408cdb491c/keymorph/unet3d).
+
+
+
+
+
