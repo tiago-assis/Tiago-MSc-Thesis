@@ -58,7 +58,7 @@ class SurgicalVectorGenerator:
         coords = np.argwhere(mask > 0)
         # Find the tumor center coordinates by calculating the mean index of each axis
         centroid = np.mean(coords, axis=0)
-        # Make sure the coordinates are always in physical space, so the later code makes sense for every case
+        # Make sure the coordinates are always in physical space, so the downstream code works for every case
         reoriented_centroid = centroid @ header["space directions"] + header["space origin"]
         return reoriented_centroid
 
@@ -95,7 +95,7 @@ class SurgicalVectorGenerator:
         closest_idxs = np.argsort(distances)
         # Keep looking for the next closest surface point, if the Z-axis of the current closest point is below the tumor center 
         # (prevents the entry point being under the brain, which is physically not possible).
-        # Quick constraint here because in generate_gravity_directions() there's an additional one.
+        # Quick constraint here because in 'generate_gravity_directions()' there's a different one for the generated vector variations.
         for i in range(closest_idxs.shape[1]):
             closest_surface_point = brain_surface[closest_idxs[0][i]]
             if closest_surface_point[2] > tumor_center[2]:
@@ -144,10 +144,10 @@ class SurgicalVectorGenerator:
         # Convert degrees to radians
         angle_var_rad = np.radians(angle_variability)
 
-        # The constraint for all the angles to be separated by a certain minimum angle
-        # sometimes led to infinite loops if the angle variability is small for the number of samples.
+        # The constraint for all the angles to be separated by a fixed minimum angle
+        # sometimes led to infinite loops if the angle variability is small for the defined number of sampled angles.
         # (i.e., any angle randomly sampled would not fulfill the constraint, so an infinite loop would occur)
-        # This equation was manually tested to fit to points that allowed the code to run properly.
+        # This equation was manually fit to points that allowed the code to run properly.
         min_angle_separation = 150 * num_samples ** -1.6 ##
 
         min_angle = np.radians(min_angle_separation)
@@ -178,10 +178,13 @@ class SurgicalVectorGenerator:
             new_z = np.sin(new_phi)
             gravity_coeffs = np.array([-new_x, -new_y, -new_z])
             # Clip Z-axis to ensure that the new entry vectors don't come from under the brain.
-            # It allows a bit of movement to occur in the Z-axis (in comparison to the first constraint), but clips it if it is too big (> 0.2).
+            # It allows a bit of movement to occur in the Z-axis (in comparison to the constraint in 'find_closest_surface_point()'), 
+            # but clips it if it is too big (> 0.2).
             # 0.2 is a value that seemed okay to use as a constraint, based on my testing. Can be changed.
-            if gravity_coeffs[2] > 0.2:
-                gravity_coeffs[2] = 0.2
+            # Note that the vectors are normalized (components between 0 and 1).
+            z_clip = 0.2
+            if gravity_coeffs[2] > z_clip:
+                gravity_coeffs[2] = z_clip
             gravity_directions.append(gravity_coeffs)
 
         return np.array(gravity_directions)
