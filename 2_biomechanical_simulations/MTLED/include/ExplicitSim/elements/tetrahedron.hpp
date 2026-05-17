@@ -39,6 +39,7 @@
 #include <string>
 
 #include <cmath>
+#include <cstdint>
 
 namespace ExplicitSim {
 

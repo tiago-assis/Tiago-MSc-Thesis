@@ -24,6 +24,7 @@
 #include <assert.h>
 
 #include "ExplicitSim/conditions/load_curve.hpp"
+#include <cstdint>
 
 
 namespace ExplicitSim {

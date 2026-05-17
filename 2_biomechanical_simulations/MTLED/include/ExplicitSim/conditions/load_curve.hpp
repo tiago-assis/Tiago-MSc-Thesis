@@ -39,6 +39,7 @@
 #include <vector>
 
 #include <stdexcept>
+#include <cstdint>
 #include <exception>
 
 namespace ExplicitSim {

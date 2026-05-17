@@ -23,6 +23,7 @@
 
 
 #include "ExplicitSim/elements/tetrahedron.hpp"
+#include <cstdint>
 
 
 namespace ExplicitSim {
