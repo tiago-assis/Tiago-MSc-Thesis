@@ -27,6 +27,19 @@ def main(input_path: str) -> None:
     Args:
         input_path (str): Path to the root directory containing individual patient case folders.
     """
+    os.makedirs("./simulation_pipeline/1_brain_meshes", exist_ok=True)
+    os.makedirs("./simulation_pipeline/2_tumor_idxs", exist_ok=True)
+    os.makedirs("./simulation_pipeline/3_reconstructed_brain_models", exist_ok=True)
+    os.makedirs("./simulation_pipeline/3_reconstructed_idxs", exist_ok=True)
+    os.makedirs("./simulation_pipeline/4_final_brain_models", exist_ok=True)
+    os.makedirs("./simulation_pipeline/4_skull_idxs", exist_ok=True)
+    os.makedirs("./simulation_pipeline/5_material_properties", exist_ok=True)
+    os.makedirs("./simulation_pipeline/5_memberships", exist_ok=True)
+    os.makedirs("./simulation_pipeline/6_brain_forces", exist_ok=True)
+    os.makedirs("./simulation_pipeline/6_loadings", exist_ok=True)
+    os.makedirs("./simulation_pipeline/7_displacements", exist_ok=True)
+    os.makedirs("./simulation_pipeline/mtled_outputs", exist_ok=True)
+    
     big_start = time.time()
 
     cases = natsorted(os.listdir(input_path))
