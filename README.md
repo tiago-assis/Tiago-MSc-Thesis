@@ -94,7 +94,8 @@ data/
 This work requires 3D Slicer (a free, open-source image computing platform) for some tasks, including the manipulation of segmentation and image volumes, the generation of surface models, and the computation of transforms by a multi-level BSpline interpolation algorithm ([ScatteredTransform](https://github.com/grandwork2/ScatteredTransform)).
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**2.1.** Build 3D Slicer from source by following the instructions from [here](https://slicer.readthedocs.io/en/latest/developer_guide/build_instructions/linux.html#checkout-slicer-source-files). \
-This may take a long time, depending on your CPU and RAM. I have 16 threads and 32 GB of RAM, so I ran `make -jN -k` with `N=10` (and then `make` to debug). \
+This may take a long time, depending on your CPU and RAM. \
+With 16 threads and 32 GB of RAM, running `make -jN -k` with `N=10` (and then `make` to debug) should be fine. \
 The greater the `k`, the greater the amount of RAM used, leading to the compiler stalling if too high.
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**2.2.** Clone the ScatteredTransform extension repository:
