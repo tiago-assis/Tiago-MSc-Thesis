@@ -95,7 +95,7 @@ This work requires 3D Slicer (a free, open-source image computing platform) for 
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**2.1.** Build 3D Slicer from source by following the instructions from [here](https://slicer.readthedocs.io/en/latest/developer_guide/build_instructions/linux.html#checkout-slicer-source-files). \
 This may take a long time, depending on your CPU and RAM. \
-With 16 threads and 32 GB of RAM, running `make -jN -k` with `N=10` (and then `make` to debug) should be fine. \
+With 32 GB of RAM, running `make -jN -k` with `N<=10` (number of CPU threads) should be fine. \
 The greater `N` is, the greater the amount of RAM used, leading to the compiler stalling if too high.
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**2.2.** Clone the ScatteredTransform extension repository:
