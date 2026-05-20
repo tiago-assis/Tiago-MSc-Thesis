@@ -93,20 +93,14 @@ data/
 ### 2. Set up [3D Slicer](https://www.slicer.org/) with the required extension:
 This work requires 3D Slicer (a free, open-source image computing platform) for some tasks, including the manipulation of segmentation and image volumes, the generation of surface models, and the computation of transforms by a multi-level BSpline interpolation algorithm ([ScatteredTransform](https://github.com/grandwork2/ScatteredTransform)).
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**2.1.** Install dependencies:
-```
-sudo apt update && sudo apt install git subversion build-essential cmake cmake-curses-gui cmake-qt-gui \
-  qtmultimedia5-dev qttools5-dev libqt5xmlpatterns5-dev libqt5svg5-dev qtwebengine5-dev qtscript5-dev \
-  qtbase5-private-dev libqt5x11extras5-dev libxt-dev libssl-dev
-```
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**2.2.** Build 3D Slicer from source by following the instructions from [here](https://slicer.readthedocs.io/en/latest/developer_guide/build_instructions/linux.html#checkout-slicer-source-files). This may take up to several hours.
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**2.1.** Build 3D Slicer from source by following the instructions from [here](https://slicer.readthedocs.io/en/latest/developer_guide/build_instructions/linux.html#checkout-slicer-source-files). This may take a long time depending on your CPU and RAM (with at least 8 cores and 32GB RAM: I recommend running `make -j8 -k` and then `make` to debug, if necessary).
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**2.3.** Clone the ScatteredTransform extension repository:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**2.2.** Clone the ScatteredTransform extension repository:
 ```
 git clone https://github.com/grandwork2/ScatteredTransform.git
 ``` 
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**2.4.** Build the extension by following the instructions [here](https://slicer.readthedocs.io/en/latest/developer_guide/extensions.html#build-an-extension).
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**2.3.** Build the extension by following the instructions [here](https://slicer.readthedocs.io/en/latest/developer_guide/extensions.html#build-an-extension).
 
 ### 3. Create and activate a Python virtual environment ([venv](https://docs.python.org/3.10/library/venv.html), [conda](https://docs.conda.io/en/latest/), or other):
 ```
