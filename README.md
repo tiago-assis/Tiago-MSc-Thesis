@@ -95,9 +95,9 @@ This work requires 3D Slicer (a free, open-source image computing platform) for 
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**2.1.** Install dependencies:
 ```
-sudo apt update && sudo apt install git build-essential \
-  cmake cmake-curses-gui cmake-qt-gui \
-  libqt5x11extras5-dev qtmultimedia5-dev libqt5svg5-dev qtwebengine5-dev libqt5xmlpatterns5-dev qttools5-dev qtbase5-private-dev qtbase5-dev qt5-qmake
+sudo apt update && sudo apt install git subversion build-essential cmake cmake-curses-gui cmake-qt-gui \
+  qtmultimedia5-dev qttools5-dev libqt5xmlpatterns5-dev libqt5svg5-dev qtwebengine5-dev qtscript5-dev \
+  qtbase5-private-dev libqt5x11extras5-dev libxt-dev libssl-dev
 ```
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**2.2.** Build 3D Slicer from source by following the instructions from [here](https://slicer.readthedocs.io/en/latest/developer_guide/build_instructions/linux.html#checkout-slicer-source-files). This may take up to several hours.
 
